@@ -1,8 +1,8 @@
 package main
 
 import (
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"log"
+
 	"stockoverflow/internal/database"
 )
 
@@ -72,7 +72,7 @@ func main() {
 			}
 
 			movement += int(n)
-		} 
+		}
 		inserted += int(n)
 	}
 

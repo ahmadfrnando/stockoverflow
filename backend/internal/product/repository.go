@@ -15,12 +15,18 @@ var (
 	ErrProductHasHistory = errors.New("product has history")
 )
 
+const lastMovementAtCol = `(SELECT MAX(sm.created_at) FROM stock_movements sm WHERE sm.product_id = products.id)`
+
 type Repository struct {
 	db *sql.DB
 }
 
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
+}
+
+func scanProduct(row interface{ Scan(...any) error }, p *Product) error {
+	return row.Scan(&p.ID, &p.SKU, &p.Name, &p.Price, &p.Stock, &p.IsActive, &p.CreatedAt, &p.LastMovementAt)
 }
 
 func (r *Repository) List(ctx context.Context, search string, limit int, offset int) ([]Product, int, error) {
@@ -36,8 +42,8 @@ func (r *Repository) List(ctx context.Context, search string, limit int, offset 
 
 	const query = `
 	SELECT 
-	id, sku, name, price, stock, is_active, created_at 
-	FROM products ` + listWhere + ` ORDER BY id DESC
+	id, sku, name, price, stock, is_active, created_at, ` + lastMovementAtCol + `
+	 FROM products ` + listWhere + ` ORDER BY id DESC
 	LIMIT $2 OFFSET $3`
 
 	rows, err := r.db.QueryContext(ctx, query, search, limit, offset)
@@ -51,7 +57,7 @@ func (r *Repository) List(ctx context.Context, search string, limit int, offset 
 	products := []Product{}
 	for rows.Next() {
 		var p Product
-		if err := rows.Scan(&p.ID, &p.SKU, &p.Name, &p.Price, &p.Stock, &p.IsActive, &p.CreatedAt); err != nil {
+		if err := scanProduct(rows, &p); err != nil {
 			return nil, 0, fmt.Errorf("scan products: %w", err)
 		}
 
@@ -66,11 +72,11 @@ func (r *Repository) List(ctx context.Context, search string, limit int, offset 
 }
 
 func (r *Repository) GetByID(ctx context.Context, id int64) (Product, error) {
-	const query = `SELECT id, sku, name, price, stock, is_active, created_at FROM products WHERE id = $1`
+	const query = `SELECT id, sku, name, price, stock, is_active, created_at, ` + lastMovementAtCol + ` FROM products WHERE id = $1`
 
 	var p Product
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&p.ID, &p.SKU, &p.Name, &p.Price, &p.Stock, &p.IsActive, &p.CreatedAt)
+	err := scanProduct(r.db.QueryRowContext(ctx, query, id), &p)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return Product{}, ErrNotFound
@@ -85,13 +91,13 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (Product, error) {
 
 func (r *Repository) Create(ctx context.Context, in CreateProductInput) (Product, error) {
 	const query = `
-	INSERT INTO products (sku, name, price, stock) 
-	VALUES ($1, $2, $3, $4) 
-	RETURNING id, sku, name, price, stock, is_active, created_at`
+	INSERT INTO products (sku, name, price) 
+	VALUES ($1, $2, $3) 
+	RETURNING id, sku, name, price, stock, is_active, created_at, ` + lastMovementAtCol
 
 	var p Product
 
-	err := r.db.QueryRowContext(ctx, query, in.SKU, in.Name, in.Price, in.Stock).Scan(&p.ID, &p.SKU, &p.Name, &p.Price, &p.Stock, &p.IsActive, &p.CreatedAt)
+	err := scanProduct(r.db.QueryRowContext(ctx, query, in.SKU, in.Name, in.Price), &p)
 
 	var pgErr *pgconn.PgError
 
@@ -113,11 +119,11 @@ func (r *Repository) Update(ctx context.Context, id int64, in UpdateProductInput
 	price = $2,
 	is_active = $3
 	WHERE id = $4
-	RETURNING id, sku, name, price, stock, is_active, created_at`
+	RETURNING id, sku, name, price, stock, is_active, created_at, ` + lastMovementAtCol
 
 	var p Product
 
-	err := r.db.QueryRowContext(ctx, query, in.Name, in.Price, *in.IsActive, id).Scan(&p.ID, &p.SKU, &p.Name, &p.Price, &p.Stock, &p.IsActive, &p.CreatedAt)
+	err := scanProduct(r.db.QueryRowContext(ctx, query, in.Name, in.Price, *in.IsActive, id), &p)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return Product{}, ErrNotFound

@@ -68,9 +68,6 @@ func (s *Service) Create(ctx context.Context, in CreateProductInput) (Product, e
 	if in.Price < 0 {
 		fields["price"] = "price must be 0 or greater"
 	}
-	if in.Stock < 0 {
-		fields["stock"] = "stock can not negative"
-	}
 
 	if len(fields) > 0 {
 		return Product{}, &ValidationError{Fields: fields}
@@ -88,7 +85,7 @@ func (s *Service) Update(ctx context.Context, id int64, in UpdateProductInput) (
 		fields["name"] = "name is required"
 	}
 	if in.Price < 0 {
-		fields["price"] = "price must be more than 0"
+		fields["price"] = "price must be 0 or greater"
 	}
 	if in.IsActive == nil {
 		fields["is_active"] = "status active is required"

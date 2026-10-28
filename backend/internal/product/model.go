@@ -12,20 +12,20 @@ type ListResult struct {
 }
 
 type Product struct {
-	ID        int64     `json:"id"`
-	SKU       string    `json:"sku"`
-	Name      string    `json:"name"`
-	Price     int       `json:"price"`
-	Stock     int       `json:"stock"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
+	ID             int64      `json:"id"`
+	SKU            string     `json:"sku"`
+	Name           string     `json:"name"`
+	Price          int        `json:"price"`
+	Stock          int        `json:"stock"`
+	IsActive       bool       `json:"is_active"`
+	CreatedAt      time.Time  `json:"created_at"`
+	LastMovementAt *time.Time `json:"last_movement_at"`
 }
 
 type CreateProductInput struct {
 	SKU   string `json:"sku"`
 	Name  string `json:"name"`
 	Price int    `json:"price"`
-	Stock int    `json:"stock"`
 }
 
 type UpdateProductInput struct {
