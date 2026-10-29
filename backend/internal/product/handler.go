@@ -202,7 +202,7 @@ func (h *Handler) AdjustStock(w http.ResponseWriter, r *http.Request) {
 
 	if ve, ok := errors.AsType[*InsufficientStockError](err); ok {
 		httpx.ErrorWith(w, http.StatusConflict, httpx.ErrorBody{
-			Code:      httpx.CodeValidationFailed,
+			Code:      httpx.CodeInsufficientStock,
 			Message:   ve.Error(),
 			Available: &ve.Available,
 		})
@@ -220,4 +220,27 @@ func (h *Handler) AdjustStock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusCreated, map[string]any{"data": p})
+}
+
+func (h *Handler) Movements(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, httpx.CodeInvalidID, "invalid id")
+		return
+	}
+
+	p, err := h.service.ListMovements(r.Context(), id)
+
+	if errors.Is(err, ErrNotFound) {
+		httpx.Error(w, http.StatusNotFound, httpx.CodeNotFound, err.Error())
+		return
+	}
+
+	if err != nil {
+		httpx.InternalError(w, err, "list movements")
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, map[string]any{"data": p})
 }

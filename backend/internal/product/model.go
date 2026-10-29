@@ -44,9 +44,9 @@ type StockMovement struct {
 }
 
 type AdjustStockInput struct {
-	Type string `json:"type"`
-	Qty  int    `json:"qty"`
-	Note *string `json:"note"`
+	Type string  `json:"type"`
+	Qty  int     `json:"qty"`
+	Note string `json:"note"`
 }
 
 type AdjustStockResult struct {

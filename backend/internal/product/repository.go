@@ -222,3 +222,47 @@ func (r *Repository) AdjustStock(ctx context.Context, productID int64, in Adjust
 
 	return AdjustStockResult{Movement: m, Stock: newStock}, nil
 }
+
+func (r *Repository) ListMovements(ctx context.Context, productID int64) ([]StockMovement, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM products WHERE id = $1)`, productID).Scan(&exists)
+
+	if err != nil {
+		return nil, fmt.Errorf("exists product %d: %w", productID, err)
+	}
+
+	if !exists {
+		return nil, ErrNotFound
+	}
+
+	const q = `
+	SELECT id, product_id, type, qty, note, created_at
+	FROM stock_movements
+	WHERE product_id = $1
+	ORDER BY created_at DESC, id DESC`
+
+	rows, err := r.db.QueryContext(ctx, q, productID)
+
+	if err != nil {
+		return nil, fmt.Errorf("list movements %d: %w", productID, err)
+	}
+
+	defer rows.Close()
+
+	movements := []StockMovement{}
+
+	for rows.Next() {
+		var m StockMovement
+		if err := rows.Scan(&m.ID, &m.ProductID, &m.Type, &m.Qty, &m.Note, &m.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan movements: %w", err)
+		}
+
+		movements = append(movements, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate movements: %w", err)
+	}
+
+	return movements, nil
+}

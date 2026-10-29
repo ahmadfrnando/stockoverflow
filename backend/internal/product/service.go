@@ -114,6 +114,7 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 
 func (s *Service) AdjustStock(ctx context.Context, productID int64, in AdjustStockInput) (AdjustStockResult, error) {
 	in.Type = strings.ToLower(strings.TrimSpace(in.Type))
+	in.Note = strings.TrimSpace(in.Note)
 
 	fields := map[string]string{}
 	if in.Type != "in" && in.Type != "out" {
@@ -131,4 +132,8 @@ func (s *Service) AdjustStock(ctx context.Context, productID int64, in AdjustSto
 	}
 
 	return s.repo.AdjustStock(ctx, productID, in)
+}
+
+func (s *Service) ListMovements(ctx context.Context, id int64) ([]StockMovement, error) {
+	return s.repo.ListMovements(ctx, id)
 }
