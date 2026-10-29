@@ -254,3 +254,12 @@ func (h *Handler) Movements(w http.ResponseWriter, r *http.Request) {
 
 	httpx.JSON(w, http.StatusOK, map[string]any{"data": p})
 }
+
+func (h *Handler) Summary(w http.ResponseWriter, r *http.Request) {
+	summary, err := h.service.Summary(r.Context())
+	if err != nil {
+		httpx.InternalError(w, err, "product summary")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"data": summary})
+}

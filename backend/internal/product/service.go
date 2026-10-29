@@ -145,3 +145,8 @@ func (s *Service) AdjustStock(ctx context.Context, productID int64, in AdjustSto
 func (s *Service) ListMovements(ctx context.Context, id int64) ([]StockMovement, error) {
 	return s.repo.ListMovements(ctx, id)
 }
+
+func (s *Service) Summary(ctx context.Context) (Summary, error) {
+	return s.repo.Summary(ctx)
+}
+

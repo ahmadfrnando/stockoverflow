@@ -270,3 +270,21 @@ func (r *Repository) ListMovements(ctx context.Context, productID int64) ([]Stoc
 
 	return movements, nil
 }
+
+func (r *Repository) Summary(ctx context.Context) (Summary, error) {
+	const query = `
+	SELECT
+		COUNT(*),
+		COUNT(*) FILTER (WHERE is_active),
+		COALESCE(SUM(price::bigint * stock), 0),
+		COUNT(*) FILTER (WHERE stock <= 10)
+	FROM products`
+
+	var s Summary
+	err := r.db.QueryRowContext(ctx, query).Scan(&s.TotalProducts, &s.ActiveProducts, &s.TotalStockValue, &s.LowStockCount)
+	if err != nil {
+		return Summary{}, fmt.Errorf("product summary: %w", err)
+	}
+	return s, nil
+}
+
