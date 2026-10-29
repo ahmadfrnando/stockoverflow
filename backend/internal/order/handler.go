@@ -34,21 +34,6 @@ func queryInt(r *http.Request, key string, fallback int) int {
 	return v
 }
 
-func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	search := r.URL.Query().Get("search")
-	page := queryInt(r, "page", 1)
-	limit := queryInt(r, "limit", 10)
-
-	result, err := h.service.List(r.Context(), search, page, limit)
-
-	if err != nil {
-		httpx.InternalError(w, err, "list product")
-		return
-	}
-
-	httpx.JSON(w, http.StatusOK, result)
-}
-
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var in CreateOrderInput
 	err := json.NewDecoder(r.Body).Decode(&in)

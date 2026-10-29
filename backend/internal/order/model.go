@@ -4,13 +4,6 @@ import (
 	"time"
 )
 
-type ListResult struct {
-	Data  []Order `json:"data"`
-	Page  int     `json:"page"`
-	Limit int     `json:"limit"`
-	Total int     `json:"total"`
-}
-
 type Order struct {
 	ID          int64      `json:"id"`
 	Customer    string     `json:"customer"`
@@ -32,9 +25,3 @@ type Item struct {
 	Qty       int    `json:"qty"`
 	UnitPrice int    `json:"unit_price"`
 }
-
-// type UpdateProductInput struct {
-// 	Name     string `json:"name"`
-// 	Price    int    `json:"price"`
-// 	IsActive *bool  `json:"is_active"`
-// }

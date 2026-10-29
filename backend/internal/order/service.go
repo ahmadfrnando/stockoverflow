@@ -22,35 +22,6 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) List(ctx context.Context, search string, page, limit int) (ListResult, error) {
-	search = strings.TrimSpace(search)
-
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 10
-	}
-	if limit > 100 {
-		limit = 100
-	}
-
-	offset := (page - 1) * limit
-
-	products, total, err := s.repo.List(ctx, search, limit, offset)
-
-	if err != nil {
-		return ListResult{}, err
-	}
-
-	return ListResult{
-		Data:  products,
-		Page:  page,
-		Limit: limit,
-		Total: total,
-	}, nil
-}
-
 func (s *Service) Create(ctx context.Context, in CreateOrderInput) (Order, error) {
 	in.Customer = strings.TrimSpace(in.Customer)
 

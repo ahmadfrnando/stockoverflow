@@ -31,50 +31,6 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) List(ctx context.Context, search string, limit int, offset int) ([]Order, int, error) {
-	const listWhere = `WHERE ($1 = '' OR customer ILIKE '%' || $1 || '%')`
-
-	const countQuery = `SELECT COUNT(*) FROM sales_orders ` + listWhere
-
-	var total int
-
-	if err := r.db.QueryRowContext(ctx, countQuery, search).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count orders: %w", err)
-	}
-
-	const query = `
-	SELECT 
-	id, customer, status, created_at, cancelled_at
-	FROM sales_orders ` + listWhere + ` ORDER BY id DESC
-	LIMIT $2 OFFSET $3`
-
-	rows, err := r.db.QueryContext(ctx, query, search, limit, offset)
-
-	if err != nil {
-		return nil, 0, fmt.Errorf("list orders: %w", err)
-	}
-
-	defer rows.Close()
-
-	var o Order
-
-	orders := []Order{}
-	for rows.Next() {
-		var p Order
-		if err := rows.Scan(&o.ID, &o.Customer, &o.Total, &o.CreatedAt, &o.CancelledAt); err != nil {
-			return nil, 0, fmt.Errorf("scan orders: %w", err)
-		}
-
-		orders = append(orders, p)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("iterate orders: %w", err)
-	}
-
-	return orders, total, nil
-}
-
 func (r *Repository) Create(ctx context.Context, in CreateOrderInput) (Order, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
