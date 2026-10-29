@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"stockoverflow/internal/database"
+	"stockoverflow/internal/order"
 	"stockoverflow/internal/product"
 )
 
@@ -25,9 +26,12 @@ func main() {
 
 	defer db.Close()
 
-	repo := product.NewRepository(db)
-	productService := product.NewService(repo)
+	productRepo := product.NewRepository(db)
+	productService := product.NewService(productRepo)
 	productHandler := product.NewHandler(productService)
+	orderRepo := order.NewRepository(db)
+	orderService := order.NewService(orderRepo)
+	orderHandler := order.NewHandler(orderService)
 
 	mux := http.NewServeMux()
 
@@ -43,6 +47,8 @@ func main() {
 	mux.HandleFunc("DELETE /api/products/{id}", productHandler.Delete)
 	mux.HandleFunc("POST /api/products/{id}/stock", productHandler.AdjustStock)
 	mux.HandleFunc("GET /api/products/{id}/movements", productHandler.Movements)
+	mux.HandleFunc("GET /api/orders", orderHandler.List)
+	mux.HandleFunc("POST /api/orders", orderHandler.Create)
 
 	port := getenv("APP_PORT", "8080")
 
