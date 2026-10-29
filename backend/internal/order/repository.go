@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 )
 
 var (
@@ -132,7 +134,12 @@ func (r *Repository) Create(ctx context.Context, in CreateOrderInput) (Order, er
 	const queryUpdateProduct = `UPDATE products SET stock = stock - $1 WHERE sku = $2 AND stock >= $1 RETURNING price`
 	total := 0
 	items := make([]Item, 0, len(in.Items))
-	for _, item := range in.Items {
+	sorted := slices.Clone(in.Items)
+	slices.SortFunc(sorted, func(a, b Item) int {
+		return strings.Compare(a.SKU, b.SKU)
+	})
+
+	for _, item := range sorted {
 		var unitPrice int
 		err := tx.QueryRowContext(ctx, queryUpdateProduct, item.Qty, item.SKU).Scan(&unitPrice)
 

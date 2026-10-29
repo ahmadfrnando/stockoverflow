@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
+	"database/sql"
 
 	"stockoverflow/internal/database"
+	"stockoverflow/internal/order"
 )
 
 type productSeed struct {
@@ -81,4 +85,42 @@ func main() {
 	}
 
 	log.Printf("seed done: %d new products, %d skip products, %d movement stock", inserted, len(products)-inserted, movement)
+
+	n, err := seedOrders(context.Background(), db)
+	if err != nil {
+		log.Fatalf("seed orders: %v", err)
+	}
+	log.Printf("seed orders: %d created", n)
+}
+
+func seedOrders(ctx context.Context, db *sql.DB) (int, error) {
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sales_orders`).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count orders: %w", err)
+	}
+	if count > 0 {
+		return 0, nil
+	}
+
+	repo := order.NewRepository(db)
+	inputs := []order.CreateOrderInput{
+		{Customer: "Budi Santoso", Items: []order.Item{{SKU: "SKU-001", Qty: 2}, {SKU: "SKU-005", Qty: 1}}},
+		{Customer: "Siti Rahma", Items: []order.Item{{SKU: "SKU-004", Qty: 1}}},
+		{Customer: "Andi Wijaya", Items: []order.Item{{SKU: "SKU-002", Qty: 3}, {SKU: "SKU-012", Qty: 5}}},
+	}
+
+	var lastID int64
+	for _, in := range inputs {
+		o, err := repo.Create(ctx, in)
+		if err != nil {
+			return 0, fmt.Errorf("create order for %s: %w", in.Customer, err)
+		}
+		lastID = o.ID
+	}
+
+	if _, err := repo.Cancel(ctx, lastID); err != nil {
+		return 0, fmt.Errorf("cancel order %d: %w", lastID, err)
+	}
+
+	return len(inputs), nil
 }
