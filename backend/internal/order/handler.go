@@ -109,3 +109,31 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 
 	httpx.JSON(w, http.StatusOK, map[string]any{"data": p})
 }
+
+func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, httpx.CodeInvalidID, "invalid id")
+		return
+	}
+
+	p, err := h.service.Cancel(r.Context(), id)
+
+	if errors.Is(err, ErrNotFound) {
+		httpx.Error(w, http.StatusNotFound, httpx.CodeNotFound, err.Error())
+		return
+	}
+
+	if errors.Is(err, ErrAlreadyCancelled) {
+		httpx.Error(w, http.StatusConflict, httpx.CodeAlreadyCancelled, err.Error())
+		return
+	}
+
+	if err != nil {
+		httpx.InternalError(w, err, "cancel order")
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, map[string]any{"data": p})
+}

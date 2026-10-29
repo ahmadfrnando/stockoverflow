@@ -15,6 +15,7 @@ const (
 	CodeNotFound          = "NOT_FOUND"
 	CodeProductHasHistory = "PRODUCT_HAS_HISTORY"
 	CodeInsufficientStock = "INSUFFICIENT_STOCK"
+	CodeAlreadyCancelled  = "ALREADY_CANCELLED"
 )
 
 type ErrorBody struct {

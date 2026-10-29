@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("order not found")
+	ErrNotFound         = errors.New("order not found")
+	ErrAlreadyCancelled = errors.New("order already cancelled")
 )
 
 type InsufficientStockError struct {
@@ -239,4 +240,89 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (Order, error) {
 	o.Items = items
 
 	return o, nil
+}
+
+func (r *Repository) Cancel(ctx context.Context, id int64) (Order, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Order{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	const queryUpdate = `
+	UPDATE sales_orders 
+	SET status = 'CANCELLED', cancelled_at = now()
+	WHERE id = $1
+	AND status != 'CANCELLED'
+	RETURNING id`
+
+	var cancelledID int64
+	err = tx.QueryRowContext(ctx, queryUpdate, id).Scan(&cancelledID)
+	if errors.Is(err, sql.ErrNoRows) {
+		var exists bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM sales_orders WHERE id = $1)`, id).Scan(&exists); err != nil {
+			return Order{}, fmt.Errorf("check order %d: %w", id, err)
+		}
+		if !exists {
+			return Order{}, ErrNotFound
+		}
+
+		return Order{}, ErrAlreadyCancelled
+	}
+
+	if err != nil {
+		return Order{}, fmt.Errorf("cancel order %d: %w", id, err)
+	}
+
+	const queryItems = `
+	SELECT sku, qty
+	FROM sales_order_items
+	WHERE order_id = $1
+	ORDER BY sku`
+
+	rows, err := tx.QueryContext(ctx, queryItems, id)
+
+	if err != nil {
+		return Order{}, fmt.Errorf("list items %d: %w", id, err)
+	}
+
+	defer rows.Close()
+
+	items := []Item{}
+
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(&i.SKU, &i.Qty); err != nil {
+			return Order{}, fmt.Errorf("scan item: %w", err)
+		}
+
+		items = append(items, i)
+	}
+
+	if err := rows.Err(); err != nil {
+		return Order{}, fmt.Errorf("iterate items: %w", err)
+	}
+
+	const queryRestore = `UPDATE products SET stock = stock + $1 WHERE sku = $2`
+
+	const queryMovement = `
+	INSERT INTO stock_movements (product_id, type, qty, note)
+	VALUES ((SELECT id FROM products WHERE sku = $1), 'in', $2, $3)`
+
+	note := fmt.Sprintf("cancel order #%d", id)
+
+	for _, item := range items {
+		if _, err := tx.ExecContext(ctx, queryRestore, item.Qty, item.SKU); err != nil {
+			return Order{}, fmt.Errorf("restore stock %s: %w", item.SKU, err)
+		}
+
+		if _, err := tx.ExecContext(ctx, queryMovement, item.SKU, item.Qty, note); err != nil {
+			return Order{}, fmt.Errorf("insert movements %s: %w", item.SKU, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return Order{}, fmt.Errorf("commit: %w", err)
+	}
+	return r.GetByID(ctx, id)
 }
