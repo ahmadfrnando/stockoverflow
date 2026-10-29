@@ -75,3 +75,10 @@ export interface ApiErrorBody {
 }
 
 export type ProductFilter = 'all' | 'active' | 'inactive' | 'low_stock'
+
+export interface ProductSummary {
+    total_products: number
+    active_products: number
+    total_stock_value: number
+    low_stock_count: number
+}

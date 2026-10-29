@@ -7,7 +7,8 @@ import type {
     Order,
     ProductList,
     StockMovement,
-    ProductFilter
+    ProductFilter,
+    ProductSummary
 } from './types'
 
 export class ApiError extends Error {
@@ -60,6 +61,10 @@ export interface ProductQuery {
 }
 
 export const api = {
+    productSummary() {
+        return request<DataResponse<ProductSummary>>('/products/summary').then((r) => r.data)
+    },
+
     listProducts(q: ProductQuery = {}) {
         const params = new URLSearchParams()
         if (q.search) params.set('search', q.search)

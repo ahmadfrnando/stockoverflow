@@ -8,3 +8,25 @@ th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; }
 .error { background: #fef2f2; color: #991b1b; padding: 12px; border-radius: 6px; }
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
 .toolbar input { flex: 1; padding: 6px 8px; }
+.modal-backdrop { position: fixed; inset: 0; background: rgb(0 0 0 / 0.4); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal { background: #fff; border-radius: 8px; padding: 20px; width: 100%; max-width: 420px; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.field input { padding: 6px 8px; }
+.field-error { color: #b91c1c; font-size: 13px; margin: 4px 0 0; }
+.radio-group { display: flex; gap: 16px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.order-row { display: grid; grid-template-columns: 1fr 90px auto; gap: 8px; align-items: start; margin-bottom: 8px; padding: 8px; border-radius: 6px; }
+.order-row.has-error { background: #fef2f2; outline: 1px solid #fca5a5; }
+.order-row .field-error { grid-column: 1 / -1; margin: 0; }
+.order-row select, .order-row input { padding: 6px 8px; min-width: 0; }
+.nav { background: #111827; color: #fff; }
+.nav-inner { display: flex; align-items: center; gap: 16px; padding-top: 12px; padding-bottom: 12px; }
+.nav button { background: none; border: none; color: #d1d5db; cursor: pointer; font: inherit; padding: 0; }
+.nav button[aria-current='page'] { color: #fff; text-decoration: underline; }
+tfoot th { border-top: 2px solid #e5e7eb; }
+.danger { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.danger:disabled { opacity: 0.6; cursor: not-allowed; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.card-label { font-size: 13px; color: #6b7280; }
+.card-value { font-size: 20px; }
