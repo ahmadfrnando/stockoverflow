@@ -35,10 +35,20 @@ func queryInt(r *http.Request, key string, fallback int) int {
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
+	status := r.URL.Query().Get("status")
 	page := queryInt(r, "page", 1)
 	limit := queryInt(r, "limit", 10)
 
-	result, err := h.service.List(r.Context(), search, page, limit)
+	result, err := h.service.List(r.Context(), search, status, page, limit)
+
+	if ve, ok := errors.AsType[*ValidationError](err); ok {
+		httpx.ErrorWith(w, http.StatusBadRequest, httpx.ErrorBody{
+			Code:    httpx.CodeValidationFailed,
+			Message: "invalid query",
+			Fields:  ve.Fields,
+		})
+		return
+	}
 
 	if err != nil {
 		httpx.InternalError(w, err, "list product")

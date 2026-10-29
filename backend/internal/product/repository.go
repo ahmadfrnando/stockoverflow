@@ -29,14 +29,18 @@ func scanProduct(row interface{ Scan(...any) error }, p *Product) error {
 	return row.Scan(&p.ID, &p.SKU, &p.Name, &p.Price, &p.Stock, &p.IsActive, &p.CreatedAt, &p.LastMovementAt)
 }
 
-func (r *Repository) List(ctx context.Context, search string, limit int, offset int) ([]Product, int, error) {
-	const listWhere = `WHERE ($1 = '' OR name ILIKE '%' || $1 || '%' OR sku ILIKE '%' || $1 || '%')`
+func (r *Repository) List(ctx context.Context, search, status string, limit int, offset int) ([]Product, int, error) {
+	const listWhere = `WHERE ($1 = '' OR name ILIKE '%' || $1 || '%' OR sku ILIKE '%' || $1 || '%')
+	AND ($2 = ''
+		OR ($2 = 'active' AND is_active)
+		OR ($2 = 'inactive' AND NOT is_active)
+		OR ($2 = 'low_stock' AND stock <= 10))`
 
 	const countQuery = `SELECT COUNT(*) FROM products ` + listWhere
 
 	var total int
 
-	if err := r.db.QueryRowContext(ctx, countQuery, search).Scan(&total); err != nil {
+	if err := r.db.QueryRowContext(ctx, countQuery, search, status).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count products: %w", err)
 	}
 
@@ -44,9 +48,9 @@ func (r *Repository) List(ctx context.Context, search string, limit int, offset 
 	SELECT 
 	id, sku, name, price, stock, is_active, created_at, ` + lastMovementAtCol + `
 	 FROM products ` + listWhere + ` ORDER BY id DESC
-	LIMIT $2 OFFSET $3`
+	LIMIT $3 OFFSET $4`
 
-	rows, err := r.db.QueryContext(ctx, query, search, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, search, status, limit, offset)
 
 	if err != nil {
 		return nil, 0, fmt.Errorf("list products: %w", err)

@@ -31,8 +31,16 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) List(ctx context.Context, search string, page, limit int) (ListResult, error) {
+func (s *Service) List(ctx context.Context, search, status string, page, limit int) (ListResult, error) {
 	search = strings.TrimSpace(search)
+
+	switch status {
+	case "", "active", "inactive", "low_stock":
+	default:
+		return ListResult{}, &ValidationError{Fields: map[string]string{
+			"status": "must be one of active, inactive, low_stock",
+		}}
+	}
 
 	if page < 1 {
 		page = 1
@@ -46,7 +54,7 @@ func (s *Service) List(ctx context.Context, search string, page, limit int) (Lis
 
 	offset := (page - 1) * limit
 
-	products, total, err := s.repo.List(ctx, search, limit, offset)
+	products, total, err := s.repo.List(ctx, search, status, limit, offset)
 
 	if err != nil {
 		return ListResult{}, err
