@@ -2,6 +2,7 @@ package product
 
 import (
 	"context"
+	"fmt"
 	"strings"
 )
 
@@ -11,6 +12,15 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string {
 	return "validation failed"
+}
+
+type InsufficientStockError struct {
+	SKU       string
+	Available int
+}
+
+func (e *InsufficientStockError) Error() string {
+	return fmt.Sprintf("insufficient stock: available %d", e.Available)
 }
 
 type Service struct {
@@ -100,4 +110,25 @@ func (s *Service) Update(ctx context.Context, id int64, in UpdateProductInput) (
 
 func (s *Service) Delete(ctx context.Context, id int64) error {
 	return s.repo.Delete(ctx, id)
+}
+
+func (s *Service) AdjustStock(ctx context.Context, productID int64, in AdjustStockInput) (AdjustStockResult, error) {
+	in.Type = strings.ToLower(strings.TrimSpace(in.Type))
+
+	fields := map[string]string{}
+	if in.Type != "in" && in.Type != "out" {
+		fields["type"] = "type must be 'in' or 'out'"
+	}
+	if in.Type == "" {
+		fields["type"] = "type is required"
+	}
+	if in.Qty <= 0 {
+		fields["qty"] = "qty must be greater than 0"
+	}
+
+	if len(fields) > 0 {
+		return AdjustStockResult{}, &ValidationError{Fields: fields}
+	}
+
+	return s.repo.AdjustStock(ctx, productID, in)
 }

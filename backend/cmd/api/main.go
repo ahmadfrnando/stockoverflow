@@ -41,6 +41,7 @@ func main() {
 	mux.HandleFunc("POST /api/products", productHandler.Create)
 	mux.HandleFunc("PUT /api/products/{id}", productHandler.Update)
 	mux.HandleFunc("DELETE /api/products/{id}", productHandler.Delete)
+	mux.HandleFunc("POST /api/products/{id}/stock", productHandler.AdjustStock)
 
 	port := getenv("APP_PORT", "8080")
 

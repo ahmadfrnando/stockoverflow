@@ -172,3 +172,52 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *Handler) AdjustStock(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, httpx.CodeInvalidID, "invalid id")
+		return
+	}
+
+	var in AdjustStockInput
+	err = json.NewDecoder(r.Body).Decode(&in)
+
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, httpx.CodeInvalidJSON, "invalid json body")
+		return
+	}
+
+	p, err := h.service.AdjustStock(r.Context(), id, in)
+
+	if ve, ok := errors.AsType[*ValidationError](err); ok {
+		httpx.ErrorWith(w, http.StatusBadRequest, httpx.ErrorBody{
+			Code:    httpx.CodeValidationFailed,
+			Message: "validation failed",
+			Fields:  ve.Fields,
+		})
+		return
+	}
+
+	if ve, ok := errors.AsType[*InsufficientStockError](err); ok {
+		httpx.ErrorWith(w, http.StatusConflict, httpx.ErrorBody{
+			Code:      httpx.CodeValidationFailed,
+			Message:   ve.Error(),
+			Available: &ve.Available,
+		})
+		return
+	}
+
+	if errors.Is(err, ErrNotFound) {
+		httpx.Error(w, http.StatusNotFound, httpx.CodeNotFound, err.Error())
+		return
+	}
+
+	if err != nil {
+		httpx.InternalError(w, err, "adjust stock product")
+		return
+	}
+
+	httpx.JSON(w, http.StatusCreated, map[string]any{"data": p})
+}

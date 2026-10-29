@@ -161,3 +161,64 @@ func (r *Repository) Delete(ctx context.Context, id int64) error {
 
 	return nil
 }
+
+func (r *Repository) AdjustStock(ctx context.Context, productID int64, in AdjustStockInput) (AdjustStockResult, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+
+	if err != nil {
+		return AdjustStockResult{}, fmt.Errorf("begin: %w", err)
+	}
+
+	defer tx.Rollback()
+
+	delta := in.Qty
+
+	if in.Type == "out" {
+		delta = -in.Qty
+	}
+
+	const queryUpdate = `UPDATE products SET stock = stock + $1 WHERE id = $2 AND stock + $1 >= 0 RETURNING stock`
+
+	var newStock int
+
+	err = tx.QueryRowContext(ctx, queryUpdate, delta, productID).Scan(&newStock)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		var current int
+		err := tx.QueryRowContext(ctx, `SELECT stock FROM products WHERE id = $1`, productID).Scan(&current)
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return AdjustStockResult{}, ErrNotFound
+		}
+
+		if err != nil {
+			return AdjustStockResult{}, fmt.Errorf("read stock %d: %w", productID, err)
+		}
+
+		return AdjustStockResult{}, &InsufficientStockError{Available: current}
+	}
+
+	if err != nil {
+		return AdjustStockResult{}, fmt.Errorf("adjust stock %d: %w", productID, err)
+	}
+
+	const insertQuery = `
+	INSERT INTO stock_movements 
+	(product_id, type, qty, note)
+	VALUES
+	($1, $2, $3, NULLIF($4, ''))
+	RETURNING id, product_id, type, qty, note, created_at`
+
+	var m StockMovement
+	err = tx.QueryRowContext(ctx, insertQuery, productID, in.Type, in.Qty, in.Note).Scan(&m.ID, &m.ProductID, &m.Type, &m.Qty, &m.Note, &m.CreatedAt)
+
+	if err != nil {
+		return AdjustStockResult{}, fmt.Errorf("insert movement %d: %w", productID, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return AdjustStockResult{}, fmt.Errorf("commit: %w", err)
+	}
+
+	return AdjustStockResult{Movement: m, Stock: newStock}, nil
+}

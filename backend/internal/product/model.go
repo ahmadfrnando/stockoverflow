@@ -33,3 +33,23 @@ type UpdateProductInput struct {
 	Price    int    `json:"price"`
 	IsActive *bool  `json:"is_active"`
 }
+
+type StockMovement struct {
+	ID        int64     `json:"id"`
+	ProductID int64     `json:"product_id"`
+	Type      string    `json:"type"`
+	Qty       int       `json:"qty"`
+	Note      *string   `json:"note"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type AdjustStockInput struct {
+	Type string `json:"type"`
+	Qty  int    `json:"qty"`
+	Note *string `json:"note"`
+}
+
+type AdjustStockResult struct {
+	Movement StockMovement `json:"movement"`
+	Stock    int           `json:"stock"`
+}

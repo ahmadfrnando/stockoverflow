@@ -14,6 +14,7 @@ const (
 	CodeValidationFailed  = "VALIDATION_FAILED"
 	CodeNotFound          = "NOT_FOUND"
 	CodeProductHasHistory = "PRODUCT_HAS_HISTORY"
+	CodeInsufficientStock = "INSUFFICIENT_STOCK"
 )
 
 type ErrorBody struct {
