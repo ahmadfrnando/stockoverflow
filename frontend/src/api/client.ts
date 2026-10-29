@@ -7,6 +7,7 @@ import type {
     Order,
     ProductList,
     StockMovement,
+    ProductFilter
 } from './types'
 
 export class ApiError extends Error {
@@ -53,6 +54,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export interface ProductQuery {
     search ?: string
+    status?: ProductFilter
     page ?: number
     limit ?: number
 }
@@ -61,6 +63,7 @@ export const api = {
     listProducts(q: ProductQuery = {}) {
         const params = new URLSearchParams()
         if (q.search) params.set('search', q.search)
+        if (q.status && q.status !== 'all') params.set('status', q.status)
         if (q.page) params.set('page', String(q.page))
         if (q.limit) params.set('limit', String(q.limit))
         return request<ProductList>(`/products?${params}`)

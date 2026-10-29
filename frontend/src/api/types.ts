@@ -74,3 +74,4 @@ export interface ApiErrorBody {
     available?: number
 }
 
+export type ProductFilter = 'all' | 'active' | 'inactive' | 'low_stock'
