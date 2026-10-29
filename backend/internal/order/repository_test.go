@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"sync"
 
 	"stockoverflow/internal/testutil"
 )
@@ -120,5 +121,64 @@ func TestCreate_HappyPath_UpdatesStockAndWritesMovements(t *testing.T) {
 
 	if itemCount != 2 {
 		t.Errorf("order items = %d, want 2", itemCount)
+	}
+}
+
+func TestCreate_Concurrent_NoOversell(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	repo := NewRepository(db)
+	ctx := context.Background()
+
+	if _, err := db.Exec(`INSERT INTO products (sku, name, price, stock) VALUES ('SKU-A', 'product a', 10000, 5)`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	const workers = 10
+	errs := make(chan error, workers)
+
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Go(func() {
+			_, err := repo.Create(ctx, CreateOrderInput{
+				Customer: "nando",
+				Items: []Item{{SKU: "SKU-A", Qty: 1}},
+			})
+			errs <- err
+		})
+	}
+	wg.Wait()
+	close(errs)
+
+	success, insufficient := 0, 0
+	for err := range errs {
+		if err == nil {
+			success++
+			continue
+		}
+		if _, ok := errors.AsType[*InsufficientStockError](err); ok {
+			insufficient++
+			continue
+		}
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if success != 5 || insufficient != 5 {
+		t.Errorf("success=%d insufficient=%d, want 5 and 5", success, insufficient)
+	}
+
+	var stock int
+	if err := db.QueryRow(`SELECT stock FROM products WHERE sku = 'SKU-A'`).Scan(&stock); err != nil{
+		t.Fatalf("read stock: %v", err)
+	}
+	if stock != 0 {
+		t.Errorf("stock %d, want 0", stock)
+	}
+
+	var orderCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sales_orders`).Scan(&orderCount); err != nil {
+		t.Fatalf("count orders: %v", err)
+	}
+	if orderCount != 5 {
+		t.Errorf("orders = %d, want 5", orderCount)
 	}
 }
