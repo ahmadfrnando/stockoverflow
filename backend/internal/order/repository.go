@@ -58,7 +58,7 @@ func (r *Repository) List(ctx context.Context, search string, limit int, offset 
 	orders := []Order{}
 	for rows.Next() {
 		var p Order
-		if err := rows.Scan(&o.ID, &o.Customer, &o.Total, &o.CreatedAt, &o.CanclelledAt); err != nil {
+		if err := rows.Scan(&o.ID, &o.Customer, &o.Total, &o.CreatedAt, &o.CancelledAt); err != nil {
 			return nil, 0, fmt.Errorf("scan orders: %w", err)
 		}
 
@@ -186,5 +186,57 @@ func (r *Repository) Create(ctx context.Context, in CreateOrderInput) (Order, er
 	if err := tx.Commit(); err != nil {
 		return Order{}, fmt.Errorf("commit: %w", err)
 	}
+	return o, nil
+}
+
+func (r *Repository) GetByID(ctx context.Context, id int64) (Order, error) {
+	const queryOrder = `
+	SELECT 
+	id, customer, status, total, created_at, cancelled_at 
+	FROM sales_orders 
+	WHERE id = $1`
+
+	var o Order
+
+	err := r.db.QueryRowContext(ctx, queryOrder, id).Scan(&o.ID, &o.Customer, &o.Status, &o.Total, &o.CreatedAt, &o.CancelledAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return Order{}, ErrNotFound
+	}
+
+	if err != nil {
+		return Order{}, fmt.Errorf("get orders %d: %w", id, err)
+	}
+
+	const queryOrderItems = `
+	SELECT id, sku, qty, unit_price
+	FROM sales_order_items
+	WHERE order_id = $1
+	ORDER BY id`
+
+	rows, err := r.db.QueryContext(ctx, queryOrderItems, id)
+
+	if err != nil {
+		return Order{}, fmt.Errorf("list items: %w", err)
+	}
+
+	defer rows.Close()
+
+	items := []Item{}
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(&i.ID, &i.SKU, &i.Qty, &i.UnitPrice); err != nil {
+			return Order{}, fmt.Errorf("scan items: %w", err)
+		}
+
+		items = append(items, i)
+	}
+
+	if err := rows.Err(); err != nil {
+		return Order{}, fmt.Errorf("iterate order: %w", err)
+	}
+
+	o.Items = items
+
 	return o, nil
 }

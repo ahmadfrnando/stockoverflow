@@ -18,13 +18,13 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// func parseID(r *http.Request) (int64, error) {
-// 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-// 	if err != nil || id <= 0 {
-// 		return 0, errors.New("invalid id")
-// 	}
-// 	return id, nil
-// }
+func parseID(r *http.Request) (int64, error) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		return 0, errors.New("invalid id")
+	}
+	return id, nil
+}
 
 func queryInt(r *http.Request, key string, fallback int) int {
 	v, err := strconv.Atoi(r.URL.Query().Get(key))
@@ -85,4 +85,27 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusCreated, map[string]any{"data": p})
+}
+
+func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, httpx.CodeInvalidID, "invalid id")
+		return
+	}
+
+	p, err := h.service.GetByID(r.Context(), id)
+
+	if errors.Is(err, ErrNotFound) {
+		httpx.Error(w, http.StatusNotFound, httpx.CodeNotFound, err.Error())
+		return
+	}
+
+	if err != nil {
+		httpx.InternalError(w, err, "show order")
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, map[string]any{"data": p})
 }

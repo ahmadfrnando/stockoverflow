@@ -85,3 +85,7 @@ func (s *Service) Create(ctx context.Context, in CreateOrderInput) (Order, error
 
 	return s.repo.Create(ctx, in)
 }
+
+func (s *Service) GetByID(ctx context.Context, id int64) (Order, error) {
+	return s.repo.GetByID(ctx, id)
+}
